@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <string.h>
 
@@ -6,14 +7,17 @@
 #define MAX_COLS 4
 #define MAX_RESERVATIONS 100
 
-int flightID[MAX_FLIGHTS];
-char source[MAX_FLIGHTS][30];
-char destination[MAX_FLIGHTS][30];
-char departure[MAX_FLIGHTS][20];
-float economyPrice[MAX_FLIGHTS];
-float businessPrice[MAX_FLIGHTS];
+struct Flight
+{
+    int flightID;
+    char source[30];
+    char destination[30];
+    char departure[20];
+    float economyPrice;
+    float businessPrice;
+    int seats[MAX_ROWS][MAX_COLS];
+};
 
-int seats[MAX_FLIGHTS][MAX_ROWS][MAX_COLS];
 struct Reservation
 {
     int bookingID;
@@ -26,6 +30,7 @@ struct Reservation
     int reservationActive;
 };
 
+struct Flight flights[MAX_FLIGHTS];
 struct Reservation reservations[MAX_RESERVATIONS];
 
 int flightCount = 5;
@@ -49,14 +54,10 @@ void bookTicket(void);
 
 int findReservationByID(int id);
 void cancelReservation(void);
-
-void checkSeatConflicts(int index);
-
 void updateSeatAfterCancellation(int index, int row, int column);
 
+void checkSeatConflicts(int index);
 void displayAllReservations(void);
-
-
 
 
 int main(void)
@@ -64,14 +65,22 @@ int main(void)
     int choice;
 
     initializeFlights();
-    loadReservations();  /* Load saved reservations when program starts */
+    loadReservations();
 
     do
     {
         displayMainMenu();
 
-        printf("Enter your choice: ");
-        scanf("%d", &choice);
+        printf("\nEnter your choice: ");
+
+        if (scanf("%d", &choice) != 1)
+        {
+            printf("Invalid input!\n");
+
+            while (getchar() != '\n');
+
+            continue;
+        }
 
         switch (choice)
         {
@@ -97,7 +106,6 @@ int main(void)
 
             case 6:
                 printf("\nThank you for using Airline Reservation System!\n");
-                printf("All data will be cleared after exit.\n");
                 break;
 
             default:
@@ -110,122 +118,55 @@ int main(void)
 }
 
 
-/* Read reservation records from a text file */
-void loadReservations(void)
-{
-    FILE *file;
-    int index;
-
-    file = fopen("reservations.txt", "r");
-    if (file == NULL)
-        return;
-
-    while (reservationCount < MAX_RESERVATIONS &&
-           fscanf(file, "%d %d %49s %d %d %19s %f %d",
-                  &reservations[reservationCount].bookingID,
-                  &reservations[reservationCount].bookedFlightID,
-                  reservations[reservationCount].passengerName,
-                  &reservations[reservationCount].bookedRow,
-                  &reservations[reservationCount].bookedColumn,
-                  reservations[reservationCount].bookedClass,
-                  &reservations[reservationCount].ticketPrice,
-                  &reservations[reservationCount].reservationActive) == 8)
-    {
-        if (reservations[reservationCount].reservationActive == 1)
-        {
-            index = findFlightByID(reservations[reservationCount].bookedFlightID);
-            if (index != -1)
-            {
-                int row = reservations[reservationCount].bookedRow - 1;
-                int col = reservations[reservationCount].bookedColumn - 1;
-                if (row >= 0 && row < MAX_ROWS && col >= 0 && col < MAX_COLS)
-                    seats[index][row][col] = 1;
-            }
-        }
-
-        if (reservations[reservationCount].bookingID >= nextBookingID)
-            nextBookingID = reservations[reservationCount].bookingID + 1;
-
-        reservationCount++;
-    }
-    fclose(file);
-}
-
-/* Write reservation records to a text file */
-void saveReservations(void)
-{
-    FILE *file;
-    int i;
-
-    file = fopen("reservations.txt", "w");
-    if (file == NULL)
-    {
-        printf("Error: Could not save reservation file.\n");
-        return;
-    }
-
-    for (i = 0; i < reservationCount; i++)
-    {
-        fprintf(file, "%d %d %s %d %d %s %.2f %d\n",
-                reservations[i].bookingID,
-                reservations[i].bookedFlightID,
-                reservations[i].passengerName,
-                reservations[i].bookedRow,
-                reservations[i].bookedColumn,
-                reservations[i].bookedClass,
-                reservations[i].ticketPrice,
-                reservations[i].reservationActive);
-    }
-    fclose(file);
-}
-
 void initializeFlights(void)
 {
-    int i, j, k;
+    int i, j;
 
-    flightID[0] = 101;
-    strcpy(source[0], "Karachi");
-    strcpy(destination[0], "Lahore");
-    strcpy(departure[0], "09:00AM");
-    economyPrice[0] = 15000;
-    businessPrice[0] = 30000;
+    flights[0].flightID = 101;
+    strcpy(flights[0].source, "Karachi");
+    strcpy(flights[0].destination, "Lahore");
+    strcpy(flights[0].departure, "09:00AM");
+    flights[0].economyPrice = 15000;
+    flights[0].businessPrice = 30000;
 
-    flightID[1] = 102;
-    strcpy(source[1], "Lahore");
-    strcpy(destination[1], "Islamabad");
-    strcpy(departure[1], "11:30AM");
-    economyPrice[1] = 10000;
-    businessPrice[1] = 22000;
+    flights[1].flightID = 102;
+    strcpy(flights[1].source, "Lahore");
+    strcpy(flights[1].destination, "Islamabad");
+    strcpy(flights[1].departure, "11:30AM");
+    flights[1].economyPrice = 10000;
+    flights[1].businessPrice = 22000;
 
-    flightID[2] = 103;
-    strcpy(source[2], "Karachi");
-    strcpy(destination[2], "Islamabad");
-    strcpy(departure[2], "02:00PM");
-    economyPrice[2] = 18000;
-    businessPrice[2] = 35000;
+    flights[2].flightID = 103;
+    strcpy(flights[2].source, "Karachi");
+    strcpy(flights[2].destination, "Islamabad");
+    strcpy(flights[2].departure, "02:00PM");
+    flights[2].economyPrice = 18000;
+    flights[2].businessPrice = 35000;
 
-    flightID[3] = 104;
-    strcpy(source[3], "Islamabad");
-    strcpy(destination[3], "Karachi");
-    strcpy(departure[3], "05:00PM");
-    economyPrice[3] = 17000;
-    businessPrice[3] = 32000;
+    flights[3].flightID = 104;
+    strcpy(flights[3].source, "Islamabad");
+    strcpy(flights[3].destination, "Karachi");
+    strcpy(flights[3].departure, "05:00PM");
+    flights[3].economyPrice = 17000;
+    flights[3].businessPrice = 32000;
 
-    flightID[4] = 105;
-    strcpy(source[4], "Lahore");
-    strcpy(destination[4], "Karachi");
-    strcpy(departure[4], "08:00PM");
-    economyPrice[4] = 16000;
-    businessPrice[4] = 31000;
+    flights[4].flightID = 105;
+    strcpy(flights[4].source, "Lahore");
+    strcpy(flights[4].destination, "Karachi");
+    strcpy(flights[4].departure, "08:00PM");
+    flights[4].economyPrice = 16000;
+    flights[4].businessPrice = 31000;
 
-
+    // Initialize all seats as available
     for (i = 0; i < MAX_FLIGHTS; i++)
     {
         for (j = 0; j < MAX_ROWS; j++)
         {
+            int k;
+
             for (k = 0; k < MAX_COLS; k++)
             {
-                seats[i][j][k] = 0;
+                flights[i].seats[j][k] = 0;
             }
         }
     }
@@ -247,26 +188,52 @@ void displayMainMenu(void)
 }
 
 
+int findFlightByID(int id)
+{
+    int i;
+
+    for (i = 0; i < flightCount; i++)
+    {
+        if (flights[i].flightID == id)
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+
 void displayAllFlights(void)
 {
     int i;
 
-    printf("\n================ FLIGHT SCHEDULE MANAGEMENT ================\n");
+    printf("\n================ FLIGHT SCHEDULE ================\n");
 
-    printf("%-10s %-15s %-15s %-12s %-14s %-14s\n", "Flight ID", "From", "To", "Departure", "Economy(Rs)", "Business(Rs)");
+    printf("%-10s %-15s %-15s %-12s %-14s %-14s\n",
+           "Flight ID", "From", "To", "Departure",
+           "Economy(Rs)", "Business(Rs)");
 
     for (i = 0; i < flightCount; i++)
     {
-        printf("%-10d %-15s %-15s %-12s %-14.2f %-14.2f\n", flightID[i], source[i], destination[i], departure[i], economyPrice[i], businessPrice[i]);
+        printf("%-10d %-15s %-15s %-12s %-14.2f %-14.2f\n",
+               flights[i].flightID,
+               flights[i].source,
+               flights[i].destination,
+               flights[i].departure,
+               flights[i].economyPrice,
+               flights[i].businessPrice);
     }
 }
 
 void searchFlights(void)
 {
-    char searchSource[30], searchDestination[30];
+    char searchSource[30];
+    char searchDestination[30];
+
     int i, found = 0;
 
-    printf("\n================ SEARCH FLIGHTS =================\n");
+    printf("\n================ SEARCH FLIGHTS ================\n");
 
     printf("Enter source city: ");
     scanf("%29s", searchSource);
@@ -276,7 +243,8 @@ void searchFlights(void)
 
     for (i = 0; i < flightCount; i++)
     {
-        if (strcmp(source[i], searchSource) == 0 && strcmp(destination[i], searchDestination) == 0)
+        if (strcmp(flights[i].source, searchSource) == 0 &&
+            strcmp(flights[i].destination, searchDestination) == 0)
         {
             displayFlightDetails(i);
             found = 1;
@@ -289,25 +257,21 @@ void searchFlights(void)
     }
 }
 
+
 void displayFlightDetails(int index)
 {
-    printf("\nFlight ID: %d\n", flightID[index]);
-    printf("Route: %s to %s\n", source[index], destination[index]);
-    printf("Departure: %s\n", departure[index]);
-    printf("Economy Price: Rs. %.2f\n", economyPrice[index]);
-    printf("Business Price: Rs. %.2f\n", businessPrice[index]);
-}
-int findFlightByID(int id)
-{
-	int i;
-    for ( i = 0; i < flightCount; i++)
-    {
-        if (flightID[i] == id)
-        {
-            return i;
-        }
-    }
-    return -1;
+    printf("\nFlight ID: %d\n", flights[index].flightID);
+    printf("Route: %s to %s\n",
+           flights[index].source,
+           flights[index].destination);
+
+    printf("Departure: %s\n", flights[index].departure);
+
+    printf("Economy Price: Rs. %.2f\n",
+           flights[index].economyPrice);
+
+    printf("Business Price: Rs. %.2f\n",
+           flights[index].businessPrice);
 }
 
 
@@ -315,7 +279,7 @@ void displaySeats(int index)
 {
     int i, j;
 
-    printf("\n================ SEAT MAP =================\n");
+    printf("\n================ SEAT MAP ================\n");
     printf("A = Available, X = Reserved\n");
     printf("               ECONOMY       BUSINESS\n");
 
@@ -325,7 +289,7 @@ void displaySeats(int index)
 
         for (j = 0; j < MAX_COLS; j++)
         {
-            if (seats[index][i][j] == 0)
+            if (flights[index].seats[i][j] == 0)
             {
                 printf("A ");
             }
@@ -347,6 +311,7 @@ void displaySeats(int index)
     printf("Columns 3-4: Business\n");
 }
 
+
 int isSeatAvailable(int index, int row, int column)
 {
     if (row < 0 || row >= MAX_ROWS ||
@@ -354,7 +319,8 @@ int isSeatAvailable(int index, int row, int column)
     {
         return 0;
     }
- if (seats[index][row][column] == 0)
+
+    if (flights[index].seats[row][column] == 0)
     {
         return 1;
     }
@@ -362,19 +328,26 @@ int isSeatAvailable(int index, int row, int column)
     return 0;
 }
 
+
 void bookTicket(void)
 {
     int id, index;
     int row, column, classChoice;
+
     float price;
     char name[50];
 
-    printf("\n================ TICKET RESERVATION =================\n");
+    printf("\n================ TICKET RESERVATION ================\n");
 
     displayAllFlights();
 
     printf("\nEnter Flight ID: ");
-    scanf("%d", &id);
+    if (scanf("%d", &id) != 1)
+    {
+        printf("Invalid Flight ID!\n");
+        while (getchar() != '\n');
+        return;
+    }
 
     index = findFlightByID(id);
 
@@ -390,7 +363,13 @@ void bookTicket(void)
     printf("\n1. Economy Class\n");
     printf("2. Business Class\n");
     printf("Enter class choice: ");
-    scanf("%d", &classChoice);
+
+    if (scanf("%d", &classChoice) != 1)
+    {
+        printf("Invalid class choice!\n");
+        while (getchar() != '\n');
+        return;
+    }
 
     if (classChoice != 1 && classChoice != 2)
     {
@@ -400,32 +379,49 @@ void bookTicket(void)
 
     displaySeats(index);
 
-    printf("\nEnter seat row (1-%d): ", MAX_ROWS);
-    scanf("%d", &row );
+    printf("\nEnter seat row (1-5): ");
 
-    printf("Enter seat column (1-%d): ", MAX_COLS);
-    scanf("%d", &column );
+    if (scanf("%d", &row) != 1)
+    {
+        printf("Invalid row!\n");
+        while (getchar() != '\n');
+        return;
+    }
+
+    printf("Enter seat column (1-4): ");
+
+    if (scanf("%d", &column) != 1)
+    {
+        printf("Invalid column!\n");
+        while (getchar() != '\n');
+        return;
+    }
 
     row--;
     column--;
 
-    if (classChoice == 1 && (column < 0 || column > 1))
+    if (row < 0 || row >= MAX_ROWS ||
+        column < 0 || column >= MAX_COLS)
+    {
+        printf("\nInvalid seat number!\n");
+        return;
+    }
+
+    if (classChoice == 1 && column > 1)
     {
         printf("\nSelect Economy seat from columns 1 or 2.\n");
         return;
     }
 
-    if (classChoice == 2 && (column < 2 || column > 3))
+    if (classChoice == 2 && column < 2)
     {
         printf("\nSelect Business seat from columns 3 or 4.\n");
         return;
     }
-    
-   
 
     if (isSeatAvailable(index, row, column) == 0)
     {
-        printf("\nSeat Conflict: Seat is already reserved \n");
+        printf("\nSeat Conflict: Seat is already reserved!\n");
         checkSeatConflicts(index);
         return;
     }
@@ -438,16 +434,18 @@ void bookTicket(void)
 
     if (classChoice == 1)
     {
-        price = economyPrice[index];
+        price = flights[index].economyPrice;
     }
     else
     {
-        price = businessPrice[index];
+        price = flights[index].businessPrice;
     }
 
     reservations[reservationCount].bookingID = nextBookingID;
     reservations[reservationCount].bookedFlightID = id;
+
     strcpy(reservations[reservationCount].passengerName, name);
+
     reservations[reservationCount].bookedRow = row + 1;
     reservations[reservationCount].bookedColumn = column + 1;
 
@@ -463,24 +461,29 @@ void bookTicket(void)
     reservations[reservationCount].ticketPrice = price;
     reservations[reservationCount].reservationActive = 1;
 
-
-    seats[index][row][column] = 1;
+    // Mark seat reserved
+    flights[index].seats[row][column] = 1;
 
     printf("\nTicket booked successfully!\n");
     printf("----------------------------------\n");
+
     printf("Booking ID: %d\n", nextBookingID);
     printf("Passenger: %s\n", name);
     printf("Flight ID: %d\n", id);
     printf("Seat: Row %d, Column %d\n", row + 1, column + 1);
-    printf("Class: %s\n", reservations[reservationCount].bookedClass);
+
+    printf("Class: %s\n",
+           reservations[reservationCount].bookedClass);
+
     printf("Ticket Price: Rs. %.2f\n", price);
+
     printf("----------------------------------\n");
 
     reservationCount++;
     nextBookingID++;
-    saveReservations(); 
-}
 
+    saveReservations();
+}
 
 
 int findReservationByID(int id)
@@ -489,7 +492,8 @@ int findReservationByID(int id)
 
     for (i = 0; i < reservationCount; i++)
     {
-        if (reservations[i].bookingID == id && reservations[i].reservationActive == 1)
+        if (reservations[i].bookingID == id &&
+            reservations[i].reservationActive == 1)
         {
             return i;
         }
@@ -498,15 +502,22 @@ int findReservationByID(int id)
     return -1;
 }
 
+
 void cancelReservation(void)
 {
     int id, reservationIndex, flightIndex;
     int row, column;
 
-    printf("\n================ RESERVATION CANCELLATION =================\n");
+    printf("\n================ RESERVATION CANCELLATION ================\n");
 
     printf("Enter Booking ID: ");
-    scanf("%d", &id);
+
+    if (scanf("%d", &id) != 1)
+    {
+        printf("Invalid Booking ID!\n");
+        while (getchar() != '\n');
+        return;
+    }
 
     reservationIndex = findReservationByID(id);
 
@@ -516,7 +527,9 @@ void cancelReservation(void)
         return;
     }
 
-    flightIndex = findFlightByID(reservations[reservationIndex].bookedFlightID);
+    flightIndex = findFlightByID(
+        reservations[reservationIndex].bookedFlightID
+    );
 
     if (flightIndex == -1)
     {
@@ -527,21 +540,25 @@ void cancelReservation(void)
     row = reservations[reservationIndex].bookedRow - 1;
     column = reservations[reservationIndex].bookedColumn - 1;
 
- reservations[reservationIndex].reservationActive = 0;
+    // Mark reservation cancelled
+    reservations[reservationIndex].reservationActive = 0;
 
     updateSeatAfterCancellation(flightIndex, row, column);
-    saveReservations();  
+
+    saveReservations();
 
     printf("\nReservation cancelled successfully!\n");
     printf("Booking ID: %d\n", id);
     printf("The seat is now available again.\n");
 }
 
+
 void updateSeatAfterCancellation(int index, int row, int column)
 {
-    if (row >= 0 && row < MAX_ROWS && column >= 0 && column < MAX_COLS)
+    if (row >= 0 && row < MAX_ROWS &&
+        column >= 0 && column < MAX_COLS)
     {
-        seats[index][row][column] = 0;
+        flights[index].seats[row][column] = 0;
     }
 }
 
@@ -550,9 +567,10 @@ void checkSeatConflicts(int index)
 {
     int i, j;
 
-    printf("\n================ SEAT CONFLICT MANAGEMENT =================\n");
+    printf("\n================ SEAT CONFLICT MANAGEMENT ================\n");
 
-    printf("Available seats for Flight ID %d:\n", flightID [index]);
+    printf("Available seats for Flight ID %d:\n",
+           flights[index].flightID);
 
     for (i = 0; i < MAX_ROWS; i++)
     {
@@ -560,7 +578,7 @@ void checkSeatConflicts(int index)
 
         for (j = 0; j < MAX_COLS; j++)
         {
-            if (seats[index][i][j] == 0)
+            if (flights[index].seats[i][j] == 0)
             {
                 printf("[Column %d: Available] ", j + 1);
             }
@@ -570,23 +588,33 @@ void checkSeatConflicts(int index)
             }
         }
 
-        printf("\n"); 
+        printf("\n");
     }
 }
+
 
 void displayAllReservations(void)
 {
     int i, found = 0;
 
-    printf("\n================ ALL RESERVATIONS =================\n");
+    printf("\n================ ALL RESERVATIONS ================\n");
 
-    printf("%-12s %-12s %-20s %-8s %-8s %-12s %-12s\n", "Booking ID", "Flight ID", "Passenger", "Row", "Column", "Class", "Price");
+    printf("%-12s %-12s %-20s %-8s %-8s %-12s %-12s\n",
+           "Booking ID", "Flight ID", "Passenger",
+           "Row", "Column", "Class", "Price");
 
     for (i = 0; i < reservationCount; i++)
     {
         if (reservations[i].reservationActive == 1)
         {
-            printf("%-12d %-12d %-20s %-8d %-8d %-12s Rs.%-10.2f\n", reservations[i].bookingID, reservations[i].bookedFlightID, reservations[i].passengerName, reservations[i].bookedRow, reservations[i].bookedColumn, reservations[i].bookedClass, reservations[i].ticketPrice);
+            printf("%-12d %-12d %-20s %-8d %-8d %-12s Rs.%-10.2f\n",
+                   reservations[i].bookingID,
+                   reservations[i].bookedFlightID,
+                   reservations[i].passengerName,
+                   reservations[i].bookedRow,
+                   reservations[i].bookedColumn,
+                   reservations[i].bookedClass,
+                   reservations[i].ticketPrice);
 
             found = 1;
         }
@@ -598,3 +626,87 @@ void displayAllReservations(void)
     }
 }
 
+
+void loadReservations(void)
+{
+    FILE *file;
+    struct Reservation temp;
+    int index;
+    int row, column;
+
+    file = fopen("reservations.txt", "r");
+
+    if (file == NULL)
+    {
+        return;
+    }
+
+    while (reservationCount < MAX_RESERVATIONS &&
+           fscanf(file, "%d %d %49s %d %d %19s %f %d",
+                  &temp.bookingID,
+                  &temp.bookedFlightID,
+                  temp.passengerName,
+                  &temp.bookedRow,
+                  &temp.bookedColumn,
+                  temp.bookedClass,
+                  &temp.ticketPrice,
+                  &temp.reservationActive) == 8)
+    {
+        reservations[reservationCount] = temp;
+
+        // Restore reserved seats
+        if (temp.reservationActive == 1)
+        {
+            index = findFlightByID(temp.bookedFlightID);
+
+            row = temp.bookedRow - 1;
+            column = temp.bookedColumn - 1;
+
+            if (index != -1 &&
+                row >= 0 && row < MAX_ROWS &&
+                column >= 0 && column < MAX_COLS)
+            {
+                flights[index].seats[row][column] = 1;
+            }
+        }
+
+        if (temp.bookingID >= nextBookingID)
+        {
+            nextBookingID = temp.bookingID + 1;
+        }
+
+        reservationCount++;
+    }
+
+    fclose(file);
+}
+
+
+void saveReservations(void)
+{
+    FILE *file;
+    int i;
+
+    file = fopen("reservations.txt", "w");
+
+    if (file == NULL)
+    {
+        printf("\nError: Could not save reservation file!\n");
+        return;
+    }
+
+    for (i = 0; i < reservationCount; i++)
+    {
+        fprintf(file, "%d %d %s %d %d %s %.2f %d\n",
+                reservations[i].bookingID,
+                reservations[i].bookedFlightID,
+                reservations[i].passengerName,
+                reservations[i].bookedRow,
+                reservations[i].bookedColumn,
+                reservations[i].bookedClass,
+                reservations[i].ticketPrice,
+                reservations[i].reservationActive);
+    }
+
+    fclose(file);
+}
